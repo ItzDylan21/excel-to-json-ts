@@ -17,17 +17,20 @@ interface TableData {
 type Column =
   | string
   | {
-      original: string;
+      original?: string;
       translated: string;
       variations?: string[];
-      excludeWhenNull?: boolean;
+      excludeRowWhenNull?: boolean;
       isNumber?: boolean;
+      format?: (value: string[]) => string;
+      defaultValue?: string;
     }
   | {
       result: string;
       columns: string[];
       variations?: { [columnName: string]: string[] };
       operation: (values: number[][]) => number;
+      defaultValue?: number;
     };
 
 app.use(express.static("public"));
@@ -59,95 +62,86 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   });
 
   const groupBySheet = req?.body?.groupBySheet === "true";
-
-  const jsonOutput = main(evaluatedSheets, groupBySheet);
+  const headerRowIndex = parseInt(req?.body?.headerRowIndex) || 0;
+  const jsonOutput = main(evaluatedSheets, groupBySheet, headerRowIndex);
   const filteredData = filterColumns(jsonOutput, [
     {
-      original: "Algemene prijzen",
-      variations: [
-        "Algemene EPDM prijzen",
-        "Materiaal:",
-        "Materiaal",
-        "Loodgieter en materialen",
-        "Vaste prijzen lekdetectie",
-        "Ventilatie prijzen vast",
-        "Slotenmakenmaker plaats prijzen",
-        "Materieel",
-        "Onderaanneming",
-      ],
-      translated: "description",
-      excludeWhenNull: true,
-    },
-    {
-      original: "tarief per:",
-      translated: "per",
-      variations: ["Eenheid"],
-    },
-    {
-      original: "verkoop prijs Excl.",
-      translated: "retailPriceEx",
-      variations: ["verkoop prijs", "verkoop prijs excl."],
-      // excludeWhenNull: true,
+      original: "Beheerders nummer",
+      translated: "id",
+      excludeRowWhenNull: true,
       isNumber: true,
     },
     {
-      original: "Inkoop materialen",
-      translated: "purchasePrice",
-      variations: ["Inkoop", "totaal inkoop"],
-      //excludeWhenNull: true,
-      isNumber: true,
+      original: "Naam",
+      translated: "name",
     },
     {
-      result: "purchasePriceVat",
-      columns: ["Inkoop materialen"],
-      variations: {
-        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
-      },
-      operation: (values) => {
-        const flattenedValues = values.flat();
-        if (flattenedValues.length === 0) return 0;
-        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
-      },
+      original: "algemeen mailadres",
+      translated: "email",
     },
     {
-      result: "totalPurchasePrice",
-      columns: ["Inkoop materialen"],
-      variations: {
-        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
-      },
-      operation: (values) => {
-        const flattenedValues = values.flat();
-        if (flattenedValues.length === 0) return 0;
-        const retailPrice = flattenedValues.reduce((a, b) => a + b, 0);
-        const retailPriceVat = retailPrice * 0.21;
-        return retailPrice + retailPriceVat;
+      original: "factuur mailadres",
+      translated: "invoiceEmail",
+    },
+    {
+      original: "Adres",
+      translated: "street",
+      format: (values: string[]): string => {
+        const index = values[0].search(/\s\d/);
+        if (index === -1) return values[0];
+        return values[0].substring(0, index);
       },
     },
     {
-      result: "retailPriceVat",
-      columns: ["verkoop prijs Excl."],
-      variations: {
-        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
-      },
-      operation: (values) => {
-        const flattenedValues = values.flat();
-        if (flattenedValues.length === 0) return 0;
-        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
+      original: "Adres",
+      translated: "housenumber",
+      format: (values: string[]): string => {
+        const index = values[0].search(/\s\d/);
+        if (index === -1) return values[0];
+        return values[0].substring(index + 1);
       },
     },
     {
-      result: "totalPrice",
-      columns: ["verkoop prijs Excl."],
-      variations: {
-        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
+      original: "postcode",
+      translated: "zipCode",
+    },
+    {
+      original: "woonplaats",
+      translated: "city",
+    },
+    {
+      translated: "country",
+      defaultValue: "Nederland",
+    },
+    {
+      original: "Adres",
+      translated: "invoiceStreet",
+      format: (values: string[]): string => {
+        const index = values[0].search(/\s\d/);
+        if (index === -1) return values[0];
+        return values[0].substring(0, index);
       },
-      operation: (values) => {
-        const flattenedValues = values.flat();
-        if (flattenedValues.length === 0) return 0;
-        const purchasePrice = flattenedValues.reduce((a, b) => a + b, 0);
-        const purchasePriceVat = purchasePrice * 0.21;
-        return purchasePrice + purchasePriceVat;
+    },
+    {
+      original: "Adres",
+      translated: "invoiceHousenumber",
+      format: (values: string[]): string => {
+        const index = values[0].search(/\s\d/);
+        if (index === -1) return values[0];
+        return values[0].substring(index + 1);
       },
+    },
+    {
+      original: "postcode",
+      translated: "invoiceZipCode",
+    },
+    {
+      original: "woonplaats",
+      translated: "invoiceCity",
+    },
+    {
+      translated: "invoiceCountry",
+      defaultValue: "Nederland",
     },
   ]);
 
@@ -161,7 +155,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
 function main(
   valuesBySheet: { [sheetName: string]: string[][] },
-  groupBySheet: boolean
+  groupBySheet: boolean,
+  headerRowIndex: number
 ): { [sheetName: string]: TableData[] } | TableData[] {
   if (groupBySheet) {
     const allData: { [sheetName: string]: TableData[] } = {};
@@ -171,10 +166,11 @@ function main(
       let objectKeys: string[] = [];
 
       for (let i = 0; i < values.length; i++) {
-        if (i === 0) {
+        if (i === headerRowIndex) {
           objectKeys = values[i].map((key) => key.trim());
           continue;
         }
+        if (i <= headerRowIndex) continue;
 
         let object: { [key: string]: string | number | null } = {};
         for (let j = 0; j < objectKeys.length; j++) {
@@ -196,11 +192,12 @@ function main(
       let objectKeys: string[] = [];
 
       for (let i = 0; i < values.length; i++) {
-        if (i === 0) {
-          // Assuming the first row contains column headers
+        if (i === headerRowIndex) {
+          // Assuming the specified row contains column headers
           objectKeys = values[i].map((key) => key.trim());
           continue;
         }
+        if (i <= headerRowIndex) continue;
 
         let object: { [key: string]: string | number | null } = {};
         for (let j = 0; j < objectKeys.length; j++) {
@@ -220,21 +217,6 @@ function filterColumns(
   data: { [sheetName: string]: TableData[] } | TableData[],
   columns: Column[]
 ): { [sheetName: string]: Partial<TableData>[] } | Partial<TableData>[] {
-  // if (Array.isArray(data)) {
-  //   console.log("Data is an array, not keyed by sheetName.");
-  // } else {
-  //   Object.keys(data).forEach((sheetName) => {
-  //     data[sheetName].forEach((row, index) => {
-  //       if (row.hasOwnProperty("Verkoopprijs Incl.")) {
-  //         console.log(
-  //           `Row ${index + 1} 'Verkoopprijs Incl.' contents:`,
-  //           JSON.stringify(row["Verkoopprijs Incl."], null, 2) // Ensure pretty print is applied
-  //         );
-  //       }
-  //     });
-  //   });
-  // }
-
   // Normalize columns to an array of objects
   const normalizedColumns = columns.map((column) => {
     if (typeof column === "string") {
@@ -244,7 +226,6 @@ function filterColumns(
     }
   });
 
-  // Function to clean and convert currency strings to numbers
   const cleanCurrencyValue = (value: string | number | null): number => {
     if (typeof value === "string") {
       const cleanedValue = value.replace(/[^0-9.,-]/g, "").trim();
@@ -287,33 +268,46 @@ function filterColumns(
         }
 
         const result = column.operation(groupedValues);
-        filteredRow[column.result] = result;
+        filteredRow[column.result] = result || column.defaultValue; // Apply defaultValue
       } else {
         const possibleNames = [column.original, ...(column.variations || [])];
-        let valueIsValid = false;
+        const valuesToFormat: string[] = [];
 
+        let valueIsValid = false;
         for (const name of possibleNames) {
-          if (row.hasOwnProperty(name)) {
+          if (name !== undefined && row.hasOwnProperty(name)) {
             if (
-              column.excludeWhenNull &&
+              column.excludeRowWhenNull &&
               (row[name] === null || row[name] === undefined)
             ) {
               excludeRow = true; // Mark row for exclusion
             }
+            let value = row[name];
             if (column.isNumber) {
-              const cleanedValue = cleanCurrencyValue(row[name]);
+              const cleanedValue = cleanCurrencyValue(value);
               if (!isNaN(cleanedValue)) {
-                filteredRow[column.translated] = cleanedValue;
+                value = cleanedValue;
                 valueIsValid = true;
               } else {
                 excludeRow = true; // Exclude the row if it has invalid number data
               }
-            } else {
-              filteredRow[column.translated] = row[name];
-              valueIsValid = true;
+            }
+            if (typeof value === "string") {
+              valuesToFormat.push(value.trim());
             }
             if (valueIsValid) break;
           }
+        }
+
+        if (column.format) {
+          const formattedValue = column.format(
+            valuesToFormat.length > 0 ? valuesToFormat : [""]
+          );
+          filteredRow[column.translated] =
+            formattedValue || column.defaultValue;
+        } else {
+          filteredRow[column.translated] =
+            valuesToFormat[valuesToFormat.length - 1] || column.defaultValue;
         }
       }
     });

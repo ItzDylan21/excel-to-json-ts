@@ -11,6 +11,16 @@
       <input type="checkbox" name="groupBySheet" id="groupBySheet" checked />
       Group by sheets
     </label>
+    <label>
+      <input
+        type="number"
+        value="0"
+        min="0"
+        name="headerRowIndex"
+        id="headerRowIndex"
+      />
+      Header row
+    </label>
     <form id="uploadForm" enctype="multipart/form-data">
       <input type="file" name="file" id="fileInput" accept=".xlsx, .xls" />
       <button type="submit">Upload</button>
@@ -28,6 +38,10 @@
           const groupBySheet = document.getElementById("groupBySheet").checked;
           formData.append("file", fileInput.files[0]);
           formData.append("groupBySheet", groupBySheet);
+          formData.append(
+            "headerRowIndex",
+            document.getElementById("headerRowIndex").value
+          );
 
           const response = await fetch("/upload", {
             method: "POST",
