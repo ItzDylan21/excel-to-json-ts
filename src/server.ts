@@ -12,6 +12,8 @@ interface TableData {
   [key: string | number]: string | number | null;
 }
 
+// Test
+
 type Column =
   | string
   | {
