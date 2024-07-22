@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Excel naar JSON vertaler</title>
+  </head>
+  <body>
+    <h1>Excel naar JSON vertaler</h1>
+    <label>
+      <input type="checkbox" name="groupBySheet" id="groupBySheet" checked />
+      Group by sheets
+    </label>
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput" accept=".xlsx, .xls" />
+      <button type="submit">Upload</button>
+    </form>
+    <pre id="output"></pre>
+
+    <script>
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const formData = new FormData();
+          const fileInput = document.getElementById("fileInput");
+          const groupBySheet = document.getElementById("groupBySheet").checked;
+          formData.append("file", fileInput.files[0]);
+          formData.append("groupBySheet", groupBySheet);
+
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const jsonResponse = await response.json();
+          document.getElementById("output").textContent = JSON.stringify(
+            jsonResponse,
+            null,
+            2
+          );
+        });
+    </script>
+  </body>
+</html>
