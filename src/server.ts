@@ -63,97 +63,92 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   const jsonOutput = main(evaluatedSheets, groupBySheet, headerRowIndex);
   const filteredData = filterColumns(jsonOutput, [
     {
-      original: "Algemene prijzen",
-      variations: [
-        "Algemene EPDM prijzen",
-        "Materiaal:",
-        "Materiaal",
-        "Loodgieter en materialen",
-        "Vaste prijzen lekdetectie",
-        "Ventilatie prijzen vast",
-        "Slotenmakenmaker plaats prijzen",
-        "Materieel",
-        "Onderaanneming",
-      ],
+      original: "Productnaam",
       translated: "description",
       excludeRowWhenNull: true,
     },
     {
-      original: "tarief per:",
+      original: "Eenheid",
       translated: "per",
-      variations: ["Eenheid"],
     },
     {
-      original: "Inkooplocatie",
-      variations: ["Leverancier"],
       translated: "supplier",
+      defaultValue: "Mastermate",
     },
     {
-      original: "verkoop prijs Excl.",
-      translated: "retailPriceEx",
-      variations: ["verkoop prijs", "verkoop prijs excl."],
-      excludeRowWhenNull: true,
-      isNumber: true,
-      isCurrency: true,
-    },
-    {
-      original: "Inkoop materialen",
-      translated: "purchasePrice",
-      variations: ["Inkoop", "totaal inkoop"],
-      excludeRowWhenNull: true,
-      isNumber: true,
-      isCurrency: true,
-    },
-    {
-      result: "purchasePriceVat",
-      columns: ["Inkoop materialen"],
-      variations: {
-        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
-      },
+      result: "purchasePrice",
+      columns: ["Nettoprijs", "Eenheid3"],
       operation: (values) => {
         const flattenedValues = values.flat();
         if (flattenedValues.length === 0) return 0;
-        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
+        return Number(flattenedValues.reduce((a, b) => a / b).toFixed(2));
+      },
+    },
+    {
+      result: "retailPriceEx",
+      columns: ["Nettoprijs", "Eenheid3"],
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        const purchasePrice = Number(
+          flattenedValues.reduce((a, b) => a / b).toFixed(2)
+        );
+        const retailPriceEx = purchasePrice * 1.3;
+        return Number(retailPriceEx.toFixed(2));
+      },
+    },
+    {
+      result: "purchasePriceVat",
+      columns: ["Nettoprijs", "Eenheid3"],
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        const purchasePrice = Number(
+          flattenedValues.reduce((a, b) => a / b).toFixed(2)
+        );
+        const purchasePriceVat = purchasePrice * 0.21;
+        return purchasePriceVat;
       },
     },
     {
       result: "totalPurchasePrice",
-      columns: ["Inkoop materialen"],
-      variations: {
-        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
-      },
+      columns: ["Nettoprijs", "Eenheid3"],
       operation: (values) => {
         const flattenedValues = values.flat();
         if (flattenedValues.length === 0) return 0;
-        const retailPrice = flattenedValues.reduce((a, b) => a + b, 0);
-        const retailPriceVat = retailPrice * 0.21;
-        return retailPrice + retailPriceVat;
+        const purchasePrice = Number(
+          flattenedValues.reduce((a, b) => a / b).toFixed(2)
+        );
+        const purchasePriceVat = purchasePrice * 0.21;
+        return purchasePriceVat + purchasePrice;
       },
     },
     {
       result: "retailPriceVat",
-      columns: ["verkoop prijs Excl."],
-      variations: {
-        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
-      },
+      columns: ["Nettoprijs", "Eenheid3"],
       operation: (values) => {
         const flattenedValues = values.flat();
         if (flattenedValues.length === 0) return 0;
-        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
+        const purchasePrice = Number(
+          flattenedValues.reduce((a, b) => a / b).toFixed(2)
+        );
+        const retailPriceEx = Number((purchasePrice * 1.3).toFixed(2));
+        const retailPriceVat = retailPriceEx * 0.21;
+        return retailPriceVat;
       },
     },
     {
       result: "totalPrice",
-      columns: ["verkoop prijs Excl."],
-      variations: {
-        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
-      },
+      columns: ["Nettoprijs", "Eenheid3"],
       operation: (values) => {
         const flattenedValues = values.flat();
         if (flattenedValues.length === 0) return 0;
-        const purchasePrice = flattenedValues.reduce((a, b) => a + b, 0);
-        const purchasePriceVat = purchasePrice * 0.21;
-        return purchasePrice + purchasePriceVat;
+        const purchasePrice = Number(
+          flattenedValues.reduce((a, b) => a / b).toFixed(2)
+        );
+        const retailPriceEx = Number((purchasePrice * 1.3).toFixed(2));
+        const retailPriceVat = retailPriceEx * 0.21;
+        return retailPriceVat + retailPriceEx;
       },
     },
   ]);
