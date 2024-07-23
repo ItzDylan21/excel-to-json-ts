@@ -22,7 +22,7 @@ type Column =
       variations?: string[];
       excludeRowWhenNull?: boolean;
       isNumber?: boolean;
-      format?: (value: string[]) => string;
+      format?: (value: string[]) => string | null;
       defaultValue?: string;
     }
   | {
@@ -78,10 +78,26 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     {
       original: "algemeen mailadres",
       translated: "email",
+      format: (values: string[]): string | null => {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (emailRegex.test(values[0])) {
+          return values[0];
+        } else {
+          return null;
+        }
+      },
     },
     {
       original: "factuur mailadres",
       translated: "invoiceEmail",
+      format: (values: string[]): string | null => {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (emailRegex.test(values[0])) {
+          return values[0];
+        } else {
+          return null;
+        }
+      },
     },
     {
       original: "Adres",
