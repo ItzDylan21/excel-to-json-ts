@@ -63,276 +63,97 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   const jsonOutput = main(evaluatedSheets, groupBySheet, headerRowIndex);
   const filteredData = filterColumns(jsonOutput, [
     {
-      original: "naam",
-      translated: "name",
+      original: "Algemene prijzen",
+      variations: [
+        "Algemene EPDM prijzen",
+        "Materiaal:",
+        "Materiaal",
+        "Loodgieter en materialen",
+        "Vaste prijzen lekdetectie",
+        "Ventilatie prijzen vast",
+        "Slotenmakenmaker plaats prijzen",
+        "Materieel",
+        "Onderaanneming",
+      ],
+      translated: "description",
       excludeRowWhenNull: true,
     },
     {
-      original: "telefoon",
-      translated: "phonenumber",
+      original: "tarief per:",
+      translated: "per",
+      variations: ["Eenheid"],
     },
     {
-      original: "emailadres",
-      translated: "email",
-      format: (values: string[]): string | null => {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (emailRegex.test(values[0])) {
-          return values[0];
-        } else {
-          return null;
-        }
-      },
+      original: "Inkooplocatie",
+      variations: ["Leverancier"],
+      translated: "supplier",
     },
     {
-      original: "Btwnr",
-      translated: "vatNumber",
-    },
-    {
-      original: "KvKnummer",
-      translated: "kvkNumber",
+      original: "verkoop prijs Excl.",
+      translated: "retailPriceEx",
+      variations: ["verkoop prijs", "verkoop prijs excl."],
+      excludeRowWhenNull: true,
       isNumber: true,
+      isCurrency: true,
     },
     {
-      original: "adresregel1",
-      variations: ["adresregel2", "land"],
-      translated: "street",
-      format: (values: string[]): string => {
-        switch (values[2]) {
-          case "SG":
-          case "US": {
-            if (values[1]) {
-              const index = values[1].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 1);
-            } else {
-              const index = values[0].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 1);
-            }
-          }
-          case "TW": {
-            if (values[1]) {
-              const index = values[1].search(/,\s/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/,\s/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-          default: {
-            // Default for NL, CH, BE, DE, ES
-            if (values[1]) {
-              const index = values[1].search(/\s\d/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/\s\d/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-        }
-      },
-    },
-    {
-      original: "adresregel1",
-      variations: ["adresregel2", "land"],
-      translated: "housenumber",
-      format: (values: string[]): string => {
-        switch (values[2]) {
-          case "SG":
-          case "US": {
-            if (values[1]) {
-              const index = values[1].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-          case "TW": {
-            if (values[1]) {
-              const index = values[1].search(/,\s/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 2);
-            } else {
-              const index = values[0].search(/,\s/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 2);
-            }
-          }
-          default: {
-            // Default for NL, CH, BE, DE, ES
-            if (values[1]) {
-              const index = values[1].search(/\s\d/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 1);
-            } else {
-              const index = values[0].search(/\s\d/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 1);
-            }
-          }
-        }
-      },
-    },
-    {
-      original: "postcode",
-      translated: "zipCode",
-    },
-    {
-      original: "plaats",
-      translated: "city",
-    },
-    {
-      original: "land",
-      translated: "country",
-      format: (values: string[]): string | null => {
-        const country = countries.getName(values[0], "nl");
-        return country || null;
-      },
-    },
-    {
-      original: "emailadres",
-      translated: "invoiceEmail",
-      format: (values: string[]): string | null => {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (emailRegex.test(values[0])) {
-          return values[0];
-        } else {
-          return null;
-        }
-      },
-    },
-    {
-      original: "adresregel1",
-      variations: ["adresregel2", "land"],
-      translated: "invoiceStreet",
-      format: (values: string[]): string => {
-        switch (values[2]) {
-          case "SG":
-          case "US": {
-            if (values[1]) {
-              const index = values[1].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 1);
-            } else {
-              const index = values[0].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 1);
-            }
-          }
-          case "TW": {
-            if (values[1]) {
-              const index = values[1].search(/,\s/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/,\s/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-          default: {
-            // Default for NL, CH, BE, DE, ES
-            if (values[1]) {
-              const index = values[1].search(/\s\d/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/\s\d/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-        }
-      },
-    },
-    {
-      original: "adresregel1",
-      variations: ["adresregel2", "land"],
-      translated: "invoiceHousenumber",
-      format: (values: string[]): string => {
-        switch (values[2]) {
-          case "SG":
-          case "US": {
-            if (values[1]) {
-              const index = values[1].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[1];
-              return values[1].substring(0, index);
-            } else {
-              const index = values[0].search(/\s[a-zA-Z]/);
-              if (index === -1) return values[0];
-              return values[0].substring(0, index);
-            }
-          }
-          case "TW": {
-            if (values[1]) {
-              const index = values[1].search(/,\s/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 2);
-            } else {
-              const index = values[0].search(/,\s/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 2);
-            }
-          }
-          default: {
-            // Default for NL, CH, BE, DE, ES
-            if (values[1]) {
-              const index = values[1].search(/\s\d/);
-              if (index === -1) return values[1];
-              return values[1].substring(index + 1);
-            } else {
-              const index = values[0].search(/\s\d/);
-              if (index === -1) return values[0];
-              return values[0].substring(index + 1);
-            }
-          }
-        }
-      },
-    },
-    {
-      original: "postcode",
-      translated: "invoiceZipCode",
-    },
-    {
-      original: "plaats",
-      translated: "invoiceCity",
-    },
-    {
-      original: "land",
-      translated: "invoiceCountry",
-      format: (values: string[]): string | null => {
-        const country = countries.getName(values[0], "nl");
-        return country || null;
-      },
-    },
-    {
-      original: "BEHEERDER",
-      translated: "managerId",
+      original: "Inkoop materialen",
+      translated: "purchasePrice",
+      variations: ["Inkoop", "totaal inkoop"],
+      excludeRowWhenNull: true,
       isNumber: true,
+      isCurrency: true,
     },
     {
-      original: "CODE",
-      translated: "type",
-      format: (values: string[]): string | null => {
-        switch (values[0]) {
-          case "1":
-            return "VVE";
-          case "2":
-            return "COMPANY";
-          case "3":
-            return "PRIVATE";
-          case "4":
-            return "MANAGER";
-          default:
-            return null;
-        }
+      result: "purchasePriceVat",
+      columns: ["Inkoop materialen"],
+      variations: {
+        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
+      },
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
+      },
+    },
+    {
+      result: "totalPurchasePrice",
+      columns: ["Inkoop materialen"],
+      variations: {
+        "Inkoop materialen": ["Inkoop", "totaal inkoop"],
+      },
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        const retailPrice = flattenedValues.reduce((a, b) => a + b, 0);
+        const retailPriceVat = retailPrice * 0.21;
+        return retailPrice + retailPriceVat;
+      },
+    },
+    {
+      result: "retailPriceVat",
+      columns: ["verkoop prijs Excl."],
+      variations: {
+        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
+      },
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        return flattenedValues.reduce((a, b) => a + b * 0.21, 0);
+      },
+    },
+    {
+      result: "totalPrice",
+      columns: ["verkoop prijs Excl."],
+      variations: {
+        "verkoop prijs Excl.": ["verkoop prijs excl.", "verkoop prijs"],
+      },
+      operation: (values) => {
+        const flattenedValues = values.flat();
+        if (flattenedValues.length === 0) return 0;
+        const purchasePrice = flattenedValues.reduce((a, b) => a + b, 0);
+        const purchasePriceVat = purchasePrice * 0.21;
+        return purchasePrice + purchasePriceVat;
       },
     },
   ]);
@@ -459,7 +280,7 @@ function filterColumns(
         }
 
         const result = column.operation(groupedValues);
-        filteredRow[column.result] = result || column.defaultValue; // Apply defaultValue
+        filteredRow[column.result] = result || column.defaultValue || 0;
       } else {
         const possibleNames = [column.original, ...(column.variations || [])];
         const valuesToFormat: string[] = [];
