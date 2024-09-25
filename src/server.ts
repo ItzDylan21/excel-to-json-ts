@@ -12,43 +12,61 @@ interface TableData {
   [key: string | number]: string | number | null;
 }
 
+// Type definition for column configurations
 type Column =
   | string
   | {
+      // Column name in the original data
       original?: string;
+      // Column name in the output data
       translated: string;
+      // Optional variations of the column in the Excel file
       variations?: string[];
+      // Exclude the row if the column value is null
       excludeRowWhenNull?: boolean;
+      // Optional settings for number columns
       isNumber?: boolean;
+      // Optional settings for currency columns
       isCurrency?: boolean;
+      // Optional function to format the column value
       format?: (value: string[]) => string | null;
+      // Optional default value for the column
       defaultValue?: string;
     }
   | {
+      // Resulting column name in the output data
       result: string;
+      // Column names in the original data
       columns: string[];
+      // Optional variations of the column in the Excel file
       variations?: { [columnName: string]: string[] };
+      // Operation to perform on the data values
       operation: (values: number[][]) => number;
+      // Optional default value for the column
       defaultValue?: number;
     };
 
 app.use(express.static("public"));
 
+// Handle file upload and processing
 app.post("/upload", upload.single("file"), async (req, res) => {
   const filePath = req.file?.path;
   if (!filePath) {
     return res.status(400).send("No file uploaded.");
   }
 
+  // Read the uploaded Excel file
   const workbook = XLSX.readFile(filePath, {
     cellFormula: true,
     cellNF: true,
     cellText: true,
   });
 
+  // Get all sheets and trim any whitespace in their names
   const sheetNames = workbook.SheetNames.map((sheetName) => sheetName.trim());
   const evaluatedSheets: { [sheetName: string]: string[][] } = {};
 
+  // Convert each sheet to JSON format
   sheetNames.forEach((sheetName) => {
     const worksheet = workbook.Sheets[sheetName];
     const jsonSheet = XLSX.utils.sheet_to_json(worksheet, {
@@ -58,9 +76,14 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     evaluatedSheets[sheetName] = jsonSheet;
   });
 
+  // Extract settings from request body
   const groupBySheet = req?.body?.groupBySheet === "true";
   const headerRowIndex = parseInt(req?.body?.headerRowIndex) || 0;
+
   const jsonOutput = main(evaluatedSheets, groupBySheet, headerRowIndex);
+
+  // Filter columns based on specified configurations
+  // This is different for every use case (hardcoded)
   const filteredData = filterColumns(jsonOutput, [
     {
       original: "Productnaam",
@@ -155,9 +178,11 @@ app.post("/upload", upload.single("file"), async (req, res) => {
 
   res.json(filteredData);
 
+  // Save the output to a JSON file
   const jsonFilePath = path.join(__dirname, "output.json");
   fs.writeFile(jsonFilePath, JSON.stringify(filteredData), (err) => {});
 
+  // Delete the uploaded file after processing
   fs.unlinkSync(filePath);
 });
 
@@ -169,6 +194,7 @@ function main(
   if (groupBySheet) {
     const allData: { [sheetName: string]: TableData[] } = {};
 
+    // Process each sheet into objects based on the header row
     Object.entries(valuesBySheet).forEach(([sheetName, values]) => {
       const objectArray: TableData[] = [];
       let objectKeys: string[] = [];
@@ -196,6 +222,7 @@ function main(
   } else {
     const allObjects: TableData[] = [];
 
+    // Process data without grouping by sheets
     Object.entries(valuesBySheet).forEach(([sheetName, values]) => {
       let objectKeys: string[] = [];
 
@@ -220,6 +247,7 @@ function main(
   }
 }
 
+// Filter and transform columns according to provided configurations
 function filterColumns(
   data: { [sheetName: string]: TableData[] } | TableData[],
   columns: Column[]
@@ -327,6 +355,7 @@ function filterColumns(
     return excludeRow ? null : filteredRow;
   };
 
+  // Process and filter the data either by individual sheet or without sheet grouping
   if (Array.isArray(data)) {
     return data
       .map(filterAndTranslateRow)
@@ -343,6 +372,7 @@ function filterColumns(
   }
 }
 
+// Start the Express server
 const port = 3000;
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
